@@ -1,0 +1,397 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FoE Gold GB Calculator</title>
+
+<style>
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: Arial, sans-serif;
+    background: #151923;
+    color: #f1f5f9;
+    margin: 0;
+    padding: 24px;
+  }
+
+  .container {
+    max-width: 650px;
+    margin: 0 auto;
+    background: #222938;
+    border-radius: 12px;
+    padding: 24px;
+  }
+
+  h1 {
+    margin-top: 0;
+    font-size: 24px;
+  }
+
+  .subtitle {
+    color: #aab5c6;
+    margin-bottom: 24px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  label {
+    display: block;
+    margin-bottom: 7px;
+    font-size: 14px;
+    font-weight: bold;
+  }
+
+  input[type="text"],
+  input[type="number"] {
+    width: 100%;
+    padding: 12px;
+    background: #141a26;
+    color: white;
+    border: 1px solid #465268;
+    border-radius: 6px;
+    font-size: 16px;
+  }
+
+  input:focus {
+    outline: 2px solid #60a5fa;
+  }
+
+  .options {
+    margin-top: 22px;
+    margin-bottom: 22px;
+  }
+
+  .radio-options {
+    display: flex;
+    gap: 24px;
+    margin-top: 12px;
+  }
+
+  .radio-options label {
+    font-weight: normal;
+    cursor: pointer;
+  }
+
+  .preview {
+    background: #141a26;
+    padding: 16px;
+    border-radius: 8px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    line-height: 1.7;
+    margin-bottom: 14px;
+  }
+
+  button {
+    width: 100%;
+    padding: 13px;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 7px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background: #1d4ed8;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 22px;
+  }
+
+  th, td {
+    padding: 11px;
+    text-align: left;
+    border-bottom: 1px solid #465268;
+  }
+
+  th:last-child,
+  td:last-child {
+    text-align: right;
+  }
+
+  .summary {
+    font-weight: bold;
+  }
+
+  .error {
+    color: #f87171;
+  }
+
+  .note {
+    color: #aab5c6;
+    font-size: 12px;
+    margin-top: 18px;
+  }
+
+  @media (max-width: 480px) {
+    .grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <h1>Forge of Empires</h1>
+  <p class="subtitle">Gold GB Calculator — 7 Positions</p>
+
+  <div class="grid">
+
+    <div>
+      <label for="name">Name (Optional)</label>
+      <input type="text" id="name" placeholder="Monk">
+    </div>
+
+    <div>
+      <label for="gb">GB (Optional)</label>
+      <input type="text" id="gb" placeholder="BG">
+    </div>
+
+    <div>
+      <label for="total">Total FP Cost</label>
+      <input type="number" id="total"
+             min="0" step="1" value="40453">
+    </div>
+
+    <div>
+      <label for="self">Own FP Cost (Self)</label>
+      <input type="number" id="self"
+             min="0" step="1" value="32989">
+    </div>
+
+  </div>
+
+  <div class="options">
+
+    <label>Include Self in copied output?</label>
+
+    <div class="radio-options">
+
+      <label>
+        <input type="radio"
+               name="includeSelf"
+               value="no" checked>
+        No
+      </label>
+
+      <label>
+        <input type="radio"
+               name="includeSelf"
+               value="yes">
+        Yes
+      </label>
+
+    </div>
+  </div>
+
+  <h3>Copy Preview</h3>
+
+  <div id="preview" class="preview"></div>
+
+  <button id="copyButton" onclick="copyResult()">
+    Copy Formatted Result
+  </button>
+
+  <h3>Contribution Breakdown</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Position</th>
+        <th>FP Contribution</th>
+      </tr>
+    </thead>
+
+    <tbody id="results"></tbody>
+  </table>
+
+  <p class="note">
+    Contributions use the inferred factorial distribution.
+    The Self amount is included in calculations even when
+    excluded from the copied message.
+  </p>
+
+</div>
+
+<script>
+
+const factorials = [1, 2, 6, 24, 120, 720, 5040];
+
+let outputText = "";
+
+function calculate() {
+
+  const name = document.getElementById("name").value.trim();
+  const gb = document.getElementById("gb").value.trim();
+
+  const totalInput = document.getElementById("total").value;
+  const selfInput = document.getElementById("self").value;
+
+  const total = Number(totalInput);
+  const self = Number(selfInput);
+
+  const includeSelf = document.querySelector(
+    'input[name="includeSelf"]:checked'
+  ).value === "yes";
+
+  const preview = document.getElementById("preview");
+  const results = document.getElementById("results");
+  const copyButton = document.getElementById("copyButton");
+
+  const valid =
+    totalInput !== "" &&
+    selfInput !== "" &&
+    Number.isSafeInteger(total) &&
+    Number.isSafeInteger(self) &&
+    total >= 0 &&
+    self >= 0 &&
+    self <= total;
+
+  if (!valid) {
+    preview.textContent =
+      "Enter valid whole FP values. Self cannot exceed Total.";
+
+    preview.classList.add("error");
+    results.innerHTML = "";
+    outputText = "";
+    copyButton.disabled = true;
+    return;
+  }
+
+  preview.classList.remove("error");
+  copyButton.disabled = false;
+
+  const pool = total - self;
+
+  const weights = factorials.map(f => 1 / f);
+
+  const weightSum = weights.reduce(
+    (sum, value) => sum + value, 0
+  );
+
+  const p1 = Math.round(pool / weightSum);
+
+  let spots = factorials.map(f =>
+    Math.round(p1 / f)
+  );
+
+  const assigned = spots.reduce(
+    (sum, value) => sum + value, 0
+  );
+
+  // Adjust P1 so every FP is accounted for.
+  spots[0] += pool - assigned;
+
+  const prefix = [name, gb].filter(Boolean).join(" ");
+
+  const spotText = spots
+    .map((value, index) => `${index + 1}(${value})`)
+    .reverse()
+    .join(" ");
+
+  outputText = (prefix ? prefix + " " : "") + spotText;
+
+  if (includeSelf) {
+    outputText += `\n${total}, ${self} self`;
+  }
+
+  preview.textContent = outputText;
+
+  results.innerHTML = "";
+
+  spots.forEach((value, index) => {
+    const row = document.createElement("tr");
+
+    const positionCell = document.createElement("td");
+    positionCell.textContent = `P${index + 1}`;
+
+    const valueCell = document.createElement("td");
+    valueCell.textContent = value.toLocaleString("en-US");
+
+    row.append(positionCell, valueCell);
+    results.appendChild(row);
+  });
+
+  addRow("Total P1–P7", pool, true);
+  addRow("Self", self, false);
+  addRow("Grand Total", total, true);
+}
+
+function addRow(label, value, bold) {
+
+  const row = document.createElement("tr");
+
+  if (bold) {
+    row.classList.add("summary");
+  }
+
+  const labelCell = document.createElement("td");
+  labelCell.textContent = label;
+
+  const valueCell = document.createElement("td");
+  valueCell.textContent = value.toLocaleString("en-US");
+
+  row.append(labelCell, valueCell);
+
+  document.getElementById("results").appendChild(row);
+}
+
+async function copyResult() {
+
+  if (!outputText) return;
+
+  const button = document.getElementById("copyButton");
+
+  try {
+    await navigator.clipboard.writeText(outputText);
+  } catch (error) {
+    // Fallback for local files or restricted clipboard access.
+    const textArea = document.createElement("textarea");
+    textArea.value = outputText;
+    document.body.appendChild(textArea);
+    textArea.select();
+
+    const copied = document.execCommand("copy");
+    textArea.remove();
+
+    if (!copied) {
+      button.textContent = "Copy failed — select preview";
+      return;
+    }
+  }
+
+  button.textContent = "Copied!";
+  setTimeout(() => {
+    button.textContent = "Copy Formatted Result";
+  }, 1500);
+}
+
+document.querySelectorAll("input").forEach(input => {
+  input.addEventListener("input", calculate);
+  input.addEventListener("change", calculate);
+});
+
+calculate();
+
+</script>
+
+</body>
+</html>
