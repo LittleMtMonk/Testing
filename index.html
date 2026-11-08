@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FoE Gold GB Calculator</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#141820;color:#f1f4f9;font:16px system-ui,-apple-system,sans-serif}main{max-width:560px;margin:auto;padding:22px 16px}h1{font-size:1.5rem;margin:0 0 8px}.hint{color:#b4bdc9;font-size:.9rem;line-height:1.45}label{display:block;margin:16px 0 6px;font-weight:600}input,textarea{width:100%;background:#232a35;border:1px solid #495467;color:white;border-radius:9px;padding:12px;font:inherit}textarea{height:100px;resize:vertical}button{border:0;border-radius:9px;background:#63a2ff;color:#081525;padding:13px 18px;font:inherit;font-weight:700;width:100%;margin-top:14px;cursor:pointer}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.result{background:#202733;border-radius:12px;padding:16px;margin-top:20px}table{width:100%;border-collapse:collapse}td{padding:7px 4px;border-bottom:1px solid #394352}td:last-child{text-align:right;font-variant-numeric:tabular-nums}.warn{color:#ffcd7c}small{color:#b4bdc9}
+</style>
+</head>
+<body><main>
+<h1>FoE Gold GB Calculator</h1>
+<p class="hint">Enter the current Great Building level and the base P1 reward (1.0×). The bonus is applied automatically to estimate P1–P7, using nearest-whole-number rounding (.5 rounds up). Exact FoE Helper values can differ by 1 FP or more because the original unrounded rewards are unknown.</p>
+<div class="grid"><div><label for="name">Player name</label><input id="name" value="Monk"></div><div><label for="gb">GB abbreviation</label><input id="gb" value="Obs"></div></div>
+<div class="grid"><div><label for="level">Current level</label><input id="level" type="number" min="0" step="1" value="117"></div><div><label for="p1">P1 base reward (1.0× FP)</label><input id="p1" type="number" min="0" step="1" value="2875"></div></div>
+<div class="grid"><div><label for="bonus">Contribution bonus (%)</label><input id="bonus" type="number" min="0" step="0.01" value="23"></div><div><label for="total">Total FP cost (optional)</label><input id="total" type="number" min="0" step="1" placeholder="For owner FP"></div></div>
+<p class="hint">Enter the reward shown in the game at 1.0×. The calculator multiplies the base reward by (1 + bonus / 100). For example, 2,875 at 23% becomes 3,536 FP for P1.</p>
+<section class="result"><strong>Estimated contributions</strong><table id="places"></table><p id="self" class="hint"></p></section>
+<label for="output">Copyable text</label><textarea id="output" readonly></textarea>
+<button id="copy">Copy text</button><p id="status" class="hint" role="status"></p>
+<p class="hint warn">Note: P2–P7 are estimates based on the base P1 reward and factorial ratios. Exact FoE Helper values can differ because of game reward calculations and rounding.</p>
+</main>
+<script>
+const ids=['name','gb','level','p1','bonus','total'];
+const el=id=>document.getElementById(id);
+const factorial=[1,2,6,24,120,720,5040];
+const fmt=n=>n.toLocaleString('en-US');
+function update(){
+ const level=Number(el('level').value),p1=Number(el('p1').value),bonus=Number(el('bonus').value),totalRaw=el('total').value.trim();
+ if(!Number.isInteger(level)||level<0||!Number.isFinite(p1)||p1<0||!Number.isFinite(bonus)||bonus<0){el('places').innerHTML='';el('output').value='';el('self').textContent='Enter a valid level, base P1 reward, and bonus.';return;}
+ const vals=factorial.map(f=>Math.round((p1/f)*(1+bonus/100)));
+ el('places').innerHTML=vals.map((v,i)=>`<tr><td>P${i+1}</td><td>${fmt(v)} FP</td></tr>`).join('');
+ const sum=vals.reduce((a,b)=>a+b,0);
+ let result=`${el('name').value.trim()} ${el('gb').value.trim()} ${level}→${level+1} `+vals.map((v,i)=>`${i+1}(${v})`).reverse().join(' ');
+ result=result.trim().replace(/\s+/g,' ');
+ if(totalRaw!==''&&Number.isFinite(Number(totalRaw))&&Number(totalRaw)>=0){
+  const self=Number(totalRaw)-sum;
+  el('self').textContent=`Estimated P1–P7 total: ${fmt(sum)} FP; owner: ${fmt(self)} FP`;
+  result+=`\n${fmt(Number(totalRaw))}, ${fmt(self)} self`;
+ }else el('self').textContent=`Estimated P1–P7 total: ${fmt(sum)} FP. Enter total FP cost to calculate owner FP.`;
+ el('output').value=result;
+}
+ids.forEach(id=>el(id).addEventListener('input',update));
+el('copy').addEventListener('click',async()=>{
+ try{await navigator.clipboard.writeText(el('output').value);el('status').textContent='Copied.';}
+ catch(e){el('output').focus();el('output').select();el('status').textContent='Select the text above and copy manually.';}
+});
+update();
+</script></body></html>
